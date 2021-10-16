@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/benhall-1/appealscc/api/internal/db"
+	"github.com/benhall-1/appealscc/api/internal/mail"
 	"github.com/benhall-1/appealscc/api/internal/models/discordmodel"
 	"github.com/benhall-1/appealscc/api/internal/models/model"
 	"github.com/getsentry/sentry-go"
@@ -54,6 +55,7 @@ func RegisterAccount(user *model.User, discord *discordmodel.DiscordUser) (bool,
 		sentry.CaptureException(err.Error)
 		return false, nil
 	} else {
+		mail.SendEmail(user.Email, "Account Registered", "Welcome to appeals.cc - Your account has been registered.")
 		return true, user
 	}
 }

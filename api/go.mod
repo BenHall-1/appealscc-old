@@ -14,6 +14,11 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.2 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/mailgun/mailgun-go/v4 v4.5.3 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ravener/discord-oauth2 v0.0.0-20210928130214-d7697a35c387 // indirect
 	github.com/sethvargo/go-password v0.2.0 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
