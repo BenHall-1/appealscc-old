@@ -3,7 +3,7 @@ name: Feature Request
 about: Suggest an idea for this project
 title: "\U0001F4A1 Feature Request: "
 labels: needs triage
-assignees: BenHall-1
+assignees: AppealsCC
 
 ---
 
