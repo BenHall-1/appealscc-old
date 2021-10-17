@@ -3,7 +3,7 @@ name: Bug report
 about: Create a report to help us improve
 title: "\U0001F41B Bug Report: "
 labels: needs triage
-assignees: BenHall-1
+assignees: AppealsCC
 
 ---
 
