@@ -22,7 +22,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
 		sentryError := sentry.CaptureException(err)
-		request.Respond(w, http.StatusBadRequest, "😢 Request failed - Please try again. Error code: '%s'", string(*sentryError))
+		request.Respond(w, http.StatusBadRequest, fmt.Sprintf("😢 Request failed - Please try again. Error code: '%s'", *sentryError))
 	} else {
 		defer r.Body.Close()
 		if status, _ := authentication.RegisterAccount(&user, nil); status {
@@ -38,7 +38,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&loginRequest); err != nil {
 		sentryError := sentry.CaptureException(err)
-		request.Respond(w, http.StatusBadRequest, "😢 Request failed - Please try again. Error code: '%s'", string(*sentryError))
+		request.Respond(w, http.StatusBadRequest, fmt.Sprintf("😢 Request failed - Please try again. Error code: '%s'", *sentryError))
 	} else {
 		defer r.Body.Close()
 
@@ -49,12 +49,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		} else {
 			if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
 				sentryError := sentry.CaptureException(err)
-				request.Respond(w, http.StatusUnauthorized, "🚫 Incorrect username or password. Error code: %s", string(*sentryError))
+				request.Respond(w, http.StatusUnauthorized, fmt.Sprintf("🚫 Incorrect username or password. Error code: %s", *sentryError))
 			} else {
 				tokenResponse := authentication.GenerateToken(user)
 				if err != nil {
 					sentryError := sentry.CaptureException(err)
-					request.Respond(w, http.StatusUnauthorized, "🚫 Incorrect username or password. Error code: %s", string(*sentryError))
+					request.Respond(w, http.StatusUnauthorized, fmt.Sprintf("🚫 Incorrect username or password. Error code: %s", *sentryError))
 				} else {
 					request.Respond(w, http.StatusOK, tokenResponse)
 				}
@@ -85,7 +85,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		sentryError := sentry.CaptureException(err)
-		request.Respond(w, http.StatusInternalServerError, "Error whilst contacting discord. Error code '%s'", string(*sentryError))
+		request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst contacting discord. Error code '%s'", *sentryError))
 		return
 	}
 
@@ -95,7 +95,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil || res.StatusCode != 200 {
 		if err != nil {
 			sentryError := sentry.CaptureException(err)
-			request.Respond(w, http.StatusInternalServerError, "Error whilst fetching your details from discord. Error code '%s'", string(*sentryError))
+			request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst fetching your details from discord. Error code '%s'", *sentryError))
 		} else {
 			request.Respond(w, http.StatusInternalServerError, res.Status)
 		}
@@ -110,7 +110,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		sentryError := sentry.CaptureException(err)
-		request.Respond(w, http.StatusInternalServerError, "Error whilst fetching your details from discord. Error code '%s'", string(*sentryError))
+		request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst fetching your details from discord. Error code '%s'", *sentryError))
 		return
 	}
 

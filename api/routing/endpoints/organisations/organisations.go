@@ -32,7 +32,7 @@ func GetSingleOrganisation(w http.ResponseWriter, r *http.Request) {
 
 		if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
 			sentryError := sentry.CaptureException(err.Error)
-			request.Respond(w, http.StatusInternalServerError, "Organisation not found. Error code '%s'", string(*sentryError))
+			request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Organisation not found. Error code '%s'", *sentryError))
 		} else {
 			request.Respond(w, http.StatusOK, organisation)
 		}
@@ -48,7 +48,7 @@ func GetAllOrganisationsForUser(w http.ResponseWriter, r *http.Request) {
 
 		if err := db.DB.Find(&organisation, "owner_id = ?", userId); err.Error != nil {
 			sentryError := sentry.CaptureException(err.Error)
-			request.Respond(w, http.StatusInternalServerError, "No organisations found for User ID '%s'. Error code '%s'", userId.String(), string(*sentryError))
+			request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("No organisations found for User ID '%s'. Error code '%s'", userId, *sentryError))
 		} else {
 			request.Respond(w, http.StatusOK, organisation)
 		}
@@ -61,7 +61,7 @@ func CreateOrganisation(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&organisation); err != nil {
 			sentryError := sentry.CaptureException(err)
-			request.Respond(w, http.StatusBadRequest, "Invalid body in request. Error code '%s'", string(*sentryError))
+			request.Respond(w, http.StatusBadRequest, fmt.Sprintf("Invalid body in request. Error code '%s'", *sentryError))
 		} else {
 			defer r.Body.Close()
 
@@ -71,7 +71,7 @@ func CreateOrganisation(w http.ResponseWriter, r *http.Request) {
 
 			if err := db.DB.Create(&organisation); err.Error != nil {
 				sentryError := sentry.CaptureException(err.Error)
-				request.Respond(w, http.StatusInternalServerError, "Error whilst creating new Organisation. Error code '%s'", string(*sentryError))
+				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst creating new Organisation. Error code '%s'", *sentryError))
 			} else {
 				request.Respond(w, http.StatusOK, organisation)
 			}
@@ -90,13 +90,13 @@ func UpdateOrganisation(w http.ResponseWriter, r *http.Request) {
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
 				sentryError := sentry.CaptureException(err.Error)
-				request.Respond(w, http.StatusInternalServerError, "Organisation not found. Error code '%s'", string(*sentryError))
+				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Organisation not found. Error code '%s'", *sentryError))
 			} else {
 				var bodyOrganisation model.Organisation
 				decoder := json.NewDecoder(r.Body)
 				if err := decoder.Decode(&bodyOrganisation); err != nil {
 					sentryError := sentry.CaptureException(err)
-					request.Respond(w, http.StatusBadRequest, "Error whilst getting organisation. Error code '%s'", string(*sentryError))
+					request.Respond(w, http.StatusBadRequest, fmt.Sprintf("Error whilst getting organisation. Error code '%s'", *sentryError))
 				} else {
 					defer r.Body.Close()
 
@@ -130,7 +130,7 @@ func DeleteOrganisation(w http.ResponseWriter, r *http.Request) {
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
 				sentryError := sentry.CaptureException(err.Error)
-				request.Respond(w, http.StatusInternalServerError, "Organisation not found. Error code '%s'", string(*sentryError))
+				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Organisation not found. Error code '%s'", *sentryError))
 			} else {
 				db.DB.Delete(&organisation)
 				request.Respond(w, http.StatusOK, "Organisation deleted")
@@ -153,18 +153,19 @@ func AddOrganisationModerator(w http.ResponseWriter, r *http.Request) {
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
 				sentryError := sentry.CaptureException(err.Error)
-				request.Respond(w, http.StatusInternalServerError, "Organisation not found. Error code '%s'", string(*sentryError))
+				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Organisation not found. Error code '%s'", *sentryError))
 			} else {
-				var newModerator model.User
+				newModerator := model.User{}
 				if err := db.DB.First(&newModerator, "Id = ?", userId); err.Error != nil {
 					sentryError := sentry.CaptureException(err.Error)
-					request.Respond(w, http.StatusInternalServerError, "User not found. Error code '%s'", string(*sentryError))
+					request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("User not found. Error code '%s'", *sentryError))
 				} else {
-					if err := db.DB.Model(&organisation).Association("Moderators").Append(&newModerator); err != nil {
+					fmt.Println(newModerator.ID.String())
+					if err := db.DB.Model(&organisation).Omit("Moderators.*").Association("Moderators").Append(&newModerator); err != nil {
 						sentryError := sentry.CaptureException(err)
-						request.Respond(w, http.StatusInternalServerError, "Could not add user as a Moderator. Error code '%s'", string(*sentryError))
+						request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Could not add user as a Moderator for %s. Error code '%s'", organisation.Name, *sentryError))
 					} else {
-						request.Respond(w, http.StatusOK, fmt.Sprintf("User Id '%s' added to Moderators list of organisation '%s'", userId, organisation.Name))
+						request.Respond(w, http.StatusOK, fmt.Sprintf("User Id '%s' added to the Moderators list of organisation '%s'", userId, organisation.Name))
 					}
 				}
 			}
@@ -186,16 +187,16 @@ func RemoveOrganisationModerator(w http.ResponseWriter, r *http.Request) {
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
 				sentryError := sentry.CaptureException(err.Error)
-				request.Respond(w, http.StatusInternalServerError, "Organisation not found. Error code '%s'", string(*sentryError))
+				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Organisation not found. Error code '%s'", *sentryError))
 			} else {
 				newModerator := model.User{}
 				if err := db.DB.First(&newModerator, "Id = ?", userId); err.Error != nil {
 					sentryError := sentry.CaptureException(err.Error)
-					request.Respond(w, http.StatusInternalServerError, "User not found. Error code '%s'", string(*sentryError))
+					request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("User not found. Error code '%s'", *sentryError))
 				} else {
 					if err := db.DB.Model(&organisation).Association("Moderators").Delete(&newModerator); err != nil {
 						sentryError := sentry.CaptureException(err)
-						request.Respond(w, http.StatusInternalServerError, "Could not remove user from being a Moderator. Error code '%s'", string(*sentryError))
+						request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Could not remove user from being a Moderator. Error code '%s'", *sentryError))
 					} else {
 						request.Respond(w, http.StatusOK, fmt.Sprintf("User Id '%s' removed from Moderators list of organisation '%s'", userId, organisation.Name))
 					}
