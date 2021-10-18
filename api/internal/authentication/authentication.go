@@ -1,7 +1,6 @@
 package authentication
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -26,7 +25,6 @@ func RegisterAccount(user *model.User, discord *discordmodel.DiscordUser) (bool,
 	}
 
 	if len(user.Email) == 0 && discord != nil {
-		fmt.Println(user)
 		user.Email = discord.Email
 	} else {
 		return false, nil
@@ -62,8 +60,9 @@ func GenerateToken(user model.User) *model.TokenResponse {
 	expirationTime := time.Now().Add(5 * time.Minute)
 	// Create the JWT claims, which includes the username and expiry time
 	claims := &model.Claims{
-		Email: user.Email,
-		Id:    user.ID.String(),
+		Email:       user.Email,
+		Id:          user.ID.String(),
+		GlobalAdmin: user.GlobalAdmin,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),

@@ -37,6 +37,8 @@ func SetupRequests(router *mux.Router) {
 	router.HandleFunc("/api/organisations", organisations.GetAllOrganisations).Methods("GET")
 	router.HandleFunc("/api/organisations/byuser/{userId}", organisations.GetAllOrganisationsForUser).Methods("GET")
 	router.HandleFunc("/api/organisations/{id}", organisations.GetSingleOrganisation).Methods("GET")
+	router.HandleFunc("/api/organisations/{id}/moderators/{userId}", organisations.AddOrganisationModerator).Methods("POST")
+	router.HandleFunc("/api/organisations/{id}/moderators/{userId}", organisations.RemoveOrganisationModerator).Methods("DELETE")
 
 	// Handling Errors
 	router.NotFoundHandler = http.HandlerFunc(index.NotFound)

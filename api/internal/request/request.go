@@ -2,6 +2,7 @@ package request
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -19,9 +20,13 @@ func createResponse(status int, body interface{}) model.Response {
 	return model.Response{Status: status, Body: body}
 }
 
-func Respond(w http.ResponseWriter, status int, body interface{}) error {
+func Respond(w http.ResponseWriter, status int, body interface{}, formats ...string) error {
 	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(createResponse(status, body))
+	if fmt.Sprintf("%T", body) == "string" {
+		return json.NewEncoder(w).Encode(createResponse(status, fmt.Sprintf(body.(string), formats)))
+	} else {
+		return json.NewEncoder(w).Encode(createResponse(status, body))
+	}
 }
 
 func Authorize(w http.ResponseWriter, r *http.Request) bool {
@@ -36,12 +41,12 @@ func Authorize(w http.ResponseWriter, r *http.Request) bool {
 	})
 
 	if err != nil {
-		sentry.CaptureException(err)
+		sentryError := sentry.CaptureException(err)
 		if err == jwt.ErrSignatureInvalid {
-			Respond(w, http.StatusUnauthorized, "Invalid signature for provided token")
+			Respond(w, http.StatusUnauthorized, "Invalid signature for provided token. Error code '%s'", string(*sentryError))
 			return false
 		}
-		Respond(w, http.StatusBadRequest, err)
+		Respond(w, http.StatusBadRequest, "Error whilst processing token. Error code '%s'", string(*sentryError))
 		return false
 	}
 	if !tkn.Valid {
@@ -63,12 +68,12 @@ func RefreshToken(w http.ResponseWriter, r *http.Request) bool {
 		return jwtKey, nil
 	})
 	if err != nil {
-		sentry.CaptureException(err)
+		sentryError := sentry.CaptureException(err)
 		if err == jwt.ErrSignatureInvalid {
-			Respond(w, http.StatusUnauthorized, "Invalid signature for provided token")
+			Respond(w, http.StatusUnauthorized, "Invalid signature for provided token. Error code '%s'", string(*sentryError))
 			return false
 		}
-		Respond(w, http.StatusBadRequest, err.Error())
+		Respond(w, http.StatusBadRequest, "Error whilst authenticating")
 		return false
 	}
 	if !tkn.Valid {
