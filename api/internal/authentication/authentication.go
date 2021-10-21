@@ -1,13 +1,13 @@
 package authentication
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/benhall-1/appealscc/api/internal/db"
+	"github.com/benhall-1/appealscc/api/internal/models/authmodel"
 	"github.com/benhall-1/appealscc/api/internal/models/discordmodel"
 	"github.com/benhall-1/appealscc/api/internal/models/model"
 	"github.com/getsentry/sentry-go"
@@ -25,11 +25,12 @@ func RegisterAccount(user *model.User, discord *discordmodel.DiscordUser) (bool,
 		user = &model.User{}
 	}
 
-	if len(user.Email) == 0 && discord != nil {
-		fmt.Println(user)
-		user.Email = discord.Email
-	} else {
-		return false, nil
+	if len(user.Email) == 0 {
+		if discord != nil {
+			user.Email = discord.Email
+		} else {
+			return false, nil
+		}
 	}
 
 	if len(user.Password) == 0 {
@@ -58,12 +59,14 @@ func RegisterAccount(user *model.User, discord *discordmodel.DiscordUser) (bool,
 	}
 }
 
-func GenerateToken(user model.User) *model.TokenResponse {
+func GenerateToken(user model.User) (*authmodel.TokenResponse, error) {
 	expirationTime := time.Now().Add(5 * time.Minute)
 	// Create the JWT claims, which includes the username and expiry time
-	claims := &model.Claims{
-		Email: user.Email,
-		Id:    user.ID.String(),
+	claims := &authmodel.Claims{
+		Email:       user.Email,
+		Id:          user.ID.String(),
+		GlobalAdmin: user.GlobalAdmin,
+		PremiumType: user.PremiumType,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
@@ -79,9 +82,9 @@ func GenerateToken(user model.User) *model.TokenResponse {
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
 		sentry.CaptureException(err)
-		return nil
+		return nil, err
 	} else {
-		return &model.TokenResponse{Token: tokenString, Expiration: expirationTime}
+		return &authmodel.TokenResponse{Token: tokenString, Expiration: expirationTime}, nil
 	}
 }
 

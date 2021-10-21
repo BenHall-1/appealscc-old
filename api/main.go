@@ -17,18 +17,15 @@ import (
 )
 
 func handleRequests() {
-	myRouter := mux.NewRouter().StrictSlash(true)
-	routing.SetupRequests(myRouter)
+	router := mux.NewRouter().StrictSlash(true)
+	routing.SetupRequests(router)
 
 	n := negroni.Classic()
-	n.UseHandler(myRouter)
+	n.UseHandler(router)
 
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:              os.Getenv("SENTRY_DSN"),
 		TracesSampleRate: 0.2,
-		TracesSampler: sentry.TracesSamplerFunc(func(ctx sentry.SamplingContext) sentry.Sampled {
-			return sentry.SampledTrue
-		}),
 	}); err != nil {
 		fmt.Printf("Sentry initialization failed: %v\n", err)
 	}
@@ -46,5 +43,4 @@ func main() {
 
 	fmt.Println("AppealsCC API Server")
 	handleRequests()
-	sentry.CaptureMessage("It works!")
 }
