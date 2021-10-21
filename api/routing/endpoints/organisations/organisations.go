@@ -9,8 +9,8 @@ import (
 	"github.com/benhall-1/appealscc/api/internal/db"
 	"github.com/benhall-1/appealscc/api/internal/models/model"
 	"github.com/benhall-1/appealscc/api/internal/request"
+	"github.com/benhall-1/appealscc/api/internal/utils"
 	"github.com/getsentry/sentry-go"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
@@ -65,15 +65,27 @@ func CreateOrganisation(w http.ResponseWriter, r *http.Request) {
 		} else {
 			defer r.Body.Close()
 
-			currentUserId := authentication.GetCurrentUser(w, r)["Id"].(string)
+			currentUser := authentication.GetCurrentUser(w, r)
+			currentUserId := currentUser["Id"].(string)
+			currentUserPremiumType := currentUser["PremiumType"].(float64)
 
-			organisation.OwnerID, _ = uuid.Parse(currentUserId)
+			var tempOrg model.Organisation
 
-			if err := db.DB.Create(&organisation); err.Error != nil {
-				sentryError := sentry.CaptureException(err.Error)
-				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst creating new Organisation. Error code '%s'", *sentryError))
+			if err := db.DB.Find(&tempOrg, "owner_id = ?", currentUserId); err.Error != nil {
+				sentry.CaptureException(err.Error)
 			} else {
-				request.Respond(w, http.StatusOK, organisation)
+				if err.RowsAffected == 1 && currentUserPremiumType == 0 {
+					request.Respond(w, http.StatusBadRequest, "Cannot create organisation - You have reached your maximum limit of organisations for your account")
+				} else {
+					organisation.OwnerID, _ = uuid.Parse(currentUserId)
+
+					if err := db.DB.Create(&organisation); err.Error != nil {
+						sentryError := sentry.CaptureException(err.Error)
+						request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst creating new Organisation. Error code '%s'", *sentryError))
+					} else {
+						request.Respond(w, http.StatusOK, organisation)
+					}
+				}
 			}
 		}
 	}
@@ -85,7 +97,7 @@ func UpdateOrganisation(w http.ResponseWriter, r *http.Request) {
 		organisationId, _ := uuid.Parse(vars["id"])
 		currentUser := authentication.GetCurrentUser(w, r)
 
-		if isOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
+		if utils.IsOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
 			organisation := model.Organisation{}
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
@@ -125,14 +137,15 @@ func DeleteOrganisation(w http.ResponseWriter, r *http.Request) {
 		organisationId, _ := uuid.Parse(vars["id"])
 		currentUser := authentication.GetCurrentUser(w, r)
 
-		if isOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
+		if utils.IsOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
 			organisation := model.Organisation{}
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
 				sentryError := sentry.CaptureException(err.Error)
 				request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Organisation not found. Error code '%s'", *sentryError))
 			} else {
-				db.DB.Delete(&organisation)
+
+				db.DB.Unscoped().Delete(&organisation)
 				request.Respond(w, http.StatusOK, "Organisation deleted")
 			}
 		} else {
@@ -148,7 +161,7 @@ func AddOrganisationModerator(w http.ResponseWriter, r *http.Request) {
 		userId, _ := uuid.Parse(vars["userId"])
 		currentUser := authentication.GetCurrentUser(w, r)
 
-		if isOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
+		if utils.IsOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
 			organisation := model.Organisation{}
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
@@ -182,7 +195,7 @@ func RemoveOrganisationModerator(w http.ResponseWriter, r *http.Request) {
 		userId, _ := uuid.Parse(vars["userId"])
 		currentUser := authentication.GetCurrentUser(w, r)
 
-		if isOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
+		if utils.IsOrganisationOwnerOrGlobalAdmin(organisationId, currentUser) {
 			organisation := model.Organisation{}
 
 			if err := db.DB.First(&organisation, "Id = ?", organisationId); err.Error != nil {
@@ -204,21 +217,6 @@ func RemoveOrganisationModerator(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			request.Respond(w, http.StatusForbidden, "Access Denied - You are not the owner of the organisation")
-		}
-	}
-}
-
-func isOrganisationOwnerOrGlobalAdmin(orgId uuid.UUID, user jwt.MapClaims) bool {
-	var organisation *model.Organisation
-	if err := db.DB.First(&organisation, "Id = ?", orgId); err.Error != nil {
-		sentry.CaptureException(err.Error)
-		return false
-	} else {
-		currentUserId, _ := uuid.Parse(user["Id"].(string))
-		if organisation.OwnerID == currentUserId {
-			return true
-		} else {
-			return user["GlobalAdmin"].(bool)
 		}
 	}
 }

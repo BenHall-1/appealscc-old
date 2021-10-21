@@ -29,6 +29,8 @@ func Open() error {
 	)
 
 	DB, err = gorm.Open(mysql.Open(os.Getenv("DB_CONNECTION")), &gorm.Config{
+		// Uncomment the following line when running the first migration for the database
+		// DisableForeignKeyConstraintWhenMigrating: true,
 		Logger: newLogger,
 	})
 	if err != nil {
@@ -40,6 +42,5 @@ func Open() error {
 }
 
 func Migrate() {
-	DB.AutoMigrate(&model.User{})
-	DB.AutoMigrate(&model.Organisation{})
+	DB.AutoMigrate(model.User{}, model.Organisation{}, model.Appeal{}, model.AppealResponse{}, model.AppealTemplate{}, model.AppealTemplateField{})
 }

@@ -8,16 +8,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benhall-1/appealscc/api/internal/models/model"
+	"github.com/benhall-1/appealscc/api/internal/models/authmodel"
 	"github.com/getsentry/sentry-go"
 	"github.com/golang-jwt/jwt"
 )
 
+type Response struct {
+	Status int         `json:"status"`
+	Body   interface{} `json:"body"`
+}
+
 // Create the JWT string
 var jwtKey = []byte(os.Getenv("SECRET"))
 
-func createResponse(status int, body interface{}) model.Response {
-	return model.Response{Status: status, Body: body}
+func createResponse(status int, body interface{}) Response {
+	return Response{Status: status, Body: body}
 }
 
 func Respond(w http.ResponseWriter, status int, body interface{}) error {
@@ -31,7 +36,7 @@ func Authorize(w http.ResponseWriter, r *http.Request) bool {
 		Respond(w, http.StatusUnauthorized, "Access Denied - Token not found")
 		return false
 	}
-	claims := &model.Claims{}
+	claims := &authmodel.Claims{}
 	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
@@ -59,7 +64,7 @@ func RefreshToken(w http.ResponseWriter, r *http.Request) bool {
 		Respond(w, http.StatusUnauthorized, "Access Denied - Token not found")
 		return false
 	}
-	claims := &model.Claims{}
+	claims := &authmodel.Claims{}
 	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
@@ -88,7 +93,7 @@ func RefreshToken(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	Respond(w, http.StatusOK, model.TokenResponse{Token: tokenString, Expiration: expirationTime})
+	Respond(w, http.StatusOK, authmodel.TokenResponse{Token: tokenString, Expiration: expirationTime})
 
 	return true
 }

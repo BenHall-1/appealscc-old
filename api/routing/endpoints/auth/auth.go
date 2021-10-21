@@ -10,6 +10,7 @@ import (
 
 	"github.com/benhall-1/appealscc/api/internal/authentication"
 	"github.com/benhall-1/appealscc/api/internal/db"
+	"github.com/benhall-1/appealscc/api/internal/models/authmodel"
 	"github.com/benhall-1/appealscc/api/internal/models/discordmodel"
 	"github.com/benhall-1/appealscc/api/internal/models/model"
 	"github.com/benhall-1/appealscc/api/internal/oauth"
@@ -19,12 +20,17 @@ import (
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var user model.User
+	var requestUser authmodel.LoginRequest
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&user); err != nil {
+	if err := decoder.Decode(&requestUser); err != nil {
 		sentryError := sentry.CaptureException(err)
 		request.Respond(w, http.StatusBadRequest, fmt.Sprintf("😢 Request failed - Please try again. Error code: '%s'", *sentryError))
 	} else {
 		defer r.Body.Close()
+
+		user.Email = requestUser.Email
+		user.Password = requestUser.Password
+
 		if status, _ := authentication.RegisterAccount(&user, nil); status {
 			request.Respond(w, http.StatusOK, "Account Registered")
 		} else {
@@ -34,7 +40,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	var loginRequest model.LoginRequest
+	var loginRequest authmodel.LoginRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&loginRequest); err != nil {
 		sentryError := sentry.CaptureException(err)
@@ -51,7 +57,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 				sentryError := sentry.CaptureException(err)
 				request.Respond(w, http.StatusUnauthorized, fmt.Sprintf("🚫 Incorrect username or password. Error code: %s", *sentryError))
 			} else {
-				tokenResponse := authentication.GenerateToken(user)
+				tokenResponse, err := authentication.GenerateToken(user)
 				if err != nil {
 					sentryError := sentry.CaptureException(err)
 					request.Respond(w, http.StatusUnauthorized, fmt.Sprintf("🚫 Incorrect username or password. Error code: %s", *sentryError))
@@ -115,7 +121,15 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status, user := authentication.RegisterAccount(nil, &discordUser); status {
-		request.Respond(w, http.StatusOK, authentication.GenerateToken(*user))
+		token, err := authentication.GenerateToken(*user)
+
+		if err != nil {
+			sentryError := sentry.CaptureException(err)
+			request.Respond(w, http.StatusInternalServerError, fmt.Sprintf("Error whilst fetching your details. Error code '%s'", *sentryError))
+			return
+		} else {
+			request.Respond(w, http.StatusOK, token)
+		}
 	} else {
 		request.Respond(w, http.StatusBadRequest, "😢 Request failed - Please try again")
 	}
